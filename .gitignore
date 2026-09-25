@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Compiled COBOL binaries
+legacy/cobol/batchcosto
+
+# Generated legacy outputs
+legacy/cobol/historico.dat
+legacy/cobol/alertas.dat
+
+# macOS
+.DS_Store
