@@ -14,3 +14,7 @@ legacy/cobol/alertas.dat
 
 # macOS
 .DS_Store
+
+# Generated legacy output
+historico.dat
+alertas.dat
