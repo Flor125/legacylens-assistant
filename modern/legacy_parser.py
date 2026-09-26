@@ -1,7 +1,13 @@
+from decimal import Decimal
 from pathlib import Path
 
 
 RECORD_LENGTH = 35
+
+
+def _parse_decimal(text):
+    """Parse a comma-decimal field (DECIMAL-POINT IS COMMA) into Decimal."""
+    return Decimal(text.strip().replace(",", "."))
 
 
 def parse_costs_file(path):
@@ -23,9 +29,9 @@ def parse_costs_file(path):
 
             records.append({
                 "product_id": line[0:9],
-                "gain": float(line[9:15].replace(",", ".")),
+                "gain": _parse_decimal(line[9:15]),
                 "quantity": int(line[15:24]),
-                "cost": float(line[24:35].replace(",", ".")),
+                "cost": _parse_decimal(line[24:35]),
             })
 
     return records
