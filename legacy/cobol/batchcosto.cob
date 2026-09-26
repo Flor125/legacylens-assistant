@@ -54,7 +54,6 @@
        FILE SECTION.
       *-----------------------------------------------------------------
       * Def. del archivo de entrada para costos (Formato TEXTO)
-      * Python escribe: ID(9) | GANANCIA(6,"25.50") | CANT(9) | COSTO(11,"150.75")
       *-----------------------------------------------------------------
        FD  COSTOS-IN-FILE.
        01  COSTOS-IN-RECORD.
@@ -72,7 +71,6 @@
 
       *-----------------------------------------------------------------
       * Def. del archivo de salida para historico (Formato TEXTO)
-      * COBOL escribe: ID(9) | COSTOPROM(11,"150.75") | GANANCIA(6,"25.50")
       *-----------------------------------------------------------------
        FD  HISTORICO-OUT-FILE.
        01  HISTORICO-OUT-RECORD.
@@ -111,6 +109,8 @@
            05 WS-HR-COSTO-PROMEDIO    PIC 9(8)V99.
            05 WS-HR-PORC-GANANCIA     PIC 9(3)V99.
            05 WS-HR-PRODUCTO-ID       PIC 9(9).
+           05 WS-HR-COSTO-TEMP        PIC 9(8)V99.
+           05 WS-HR-GANANCIA-TEMP     PIC 9(3)V99.
 
       *-----------------------------------------------------------------
       * Variables de Control
@@ -213,9 +213,11 @@
                    (WS-PRECIOCOSTO-N * WS-CANTIDAD-N)
            ADD WS-CANTIDAD-N TO WS-TOTAL-CANTIDAD.
 
+
        2150-CALCULAR-Y-GRABAR.
       * Se ejecuta en el "corte" (cuando cambia el ID de producto)
            IF WS-TOTAL-CANTIDAD > 0
+            
                COMPUTE WS-COSTO-PROMEDIO ROUNDED =
                        WS-TOTAL-COSTO-VALOR / WS-TOTAL-CANTIDAD
                
@@ -238,13 +240,13 @@
       * Escribe el resultado en el archivo de salida
            MOVE WS-HR-PRODUCTO-ID TO HR-PRODUCTO-ID
            
-           MOVE WS-HR-COSTO-PROMEDIO TO WS-PRECIOCOSTO-N
-           STRING WS-PRECIOCOSTO-N DELIMITED BY SIZE
+           MOVE WS-HR-COSTO-PROMEDIO TO WS-HR-COSTO-TEMP
+           STRING WS-HR-COSTO-TEMP DELIMITED BY SIZE
              INTO HR-COSTO-PROMEDIO
            END-STRING
            
-           MOVE WS-HR-PORC-GANANCIA TO WS-PORC-GANANCIA-N
-           STRING WS-PORC-GANANCIA-N DELIMITED BY SIZE
+           MOVE WS-HR-PORC-GANANCIA TO WS-HR-GANANCIA-TEMP
+           STRING WS-HR-GANANCIA-TEMP DELIMITED BY SIZE
              INTO HR-PORC-GANANCIA
            END-STRING
 
@@ -266,7 +268,7 @@
            OPEN INPUT  VENCIMIENTOS-IN-FILE
                 OUTPUT ALERTAS-OUT-FILE
 
-        PERFORM UNTIL NO-HAY-MAS-VENCIMIENTOS
+           PERFORM UNTIL NO-HAY-MAS-VENCIMIENTOS
                READ VENCIMIENTOS-IN-FILE
                    AT END
                        SET NO-HAY-MAS-VENCIMIENTOS TO TRUE

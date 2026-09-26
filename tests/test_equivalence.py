@@ -1,47 +1,35 @@
+from modern.legacy_parser import parse_costs_file
+from modern.historic_parser import parse_historic_file
 from modern.cost_calculator import calculate_average_cost
 
 
-records = [
-    {"product_id": "000000001", "quantity": 10, "cost": 150.75},
-    {"product_id": "000000001", "quantity": 20, "cost": 200.00},
-
-    {"product_id": "000000002", "quantity": 5, "cost": 100.00},
-    {"product_id": "000000002", "quantity": 15, "cost": 120.00},
-
-    {"product_id": "000000003", "quantity": 8, "cost": 80.00},
-    {"product_id": "000000003", "quantity": 12, "cost": 95.00},
-    {"product_id": "000000003", "quantity": 5, "cost": 110.00},
-
-    {"product_id": "000000004", "quantity": 25, "cost": 50.00},
-
-    {"product_id": "000000005", "quantity": 10, "cost": 300.00},
-    {"product_id": "000000005", "quantity": 10, "cost": 350.00},
-]
+INPUT_FILE = "legacy/cobol/costos.dat"
+HISTORIC_FILE = "legacy/cobol/historico.dat"
 
 
-EXPECTED = {
-    "000000001": 183.58,
-    "000000002": 115.00,
-    "000000003": 93.20,
-    "000000004": 50.00,
-    "000000005": 325.00,
+records = parse_costs_file(INPUT_FILE)
+modern_result = calculate_average_cost(records)
+
+legacy_records = parse_historic_file(HISTORIC_FILE)
+
+legacy_result = {
+    record["product_id"]: record["average_cost"]
+    for record in legacy_records
 }
 
 
-result = calculate_average_cost(records)
+assert len(records) == 10
+assert len(legacy_result) == 5
 
-for product_id, expected in EXPECTED.items():
-    actual = result[product_id]
+assert modern_result == legacy_result
 
-    assert actual == expected, (
-        f"{product_id}: expected {expected}, got {actual}"
-    )
+print("✓ LEGACY ↔ MODERN EQUIVALENCE PASSED")
+print(f"Input records: {len(records)}")
+print(f"Products compared: {len(legacy_result)}")
 
-print("✓ LEGACY/MODERN EQUIVALENCE PASSED")
-
-for product_id in EXPECTED:
+for product_id in sorted(legacy_result):
     print(
         f"{product_id}: "
-        f"COBOL={EXPECTED[product_id]:.2f} "
-        f"MODERN={result[product_id]:.2f}"
+        f"COBOL={legacy_result[product_id]:.2f} "
+        f"MODERN={modern_result[product_id]:.2f}"
     )
