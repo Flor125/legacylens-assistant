@@ -41,9 +41,13 @@ Legacy programs often depend on details that are easy to miss:
 - Input ordering
 - Output field widths
 - Binary or runtime-specific output behavior
-- Legacy business rules embedded in procedural code
+- Business rules embedded in procedural code
 
 LegacyLens explores how these behaviors can be identified, reproduced, and validated before considering the modernization complete.
+
+The central principle is:
+
+> Preserve observable legacy behavior before changing the implementation.
 
 ## Current MVP
 
@@ -69,13 +73,25 @@ Average = ───────────────────────�
                  Σ(quantity)
 ```
 
-The expiration flow copies the expiration lot identifiers into the alert output.
+The expiration flow copies expiration lot identifiers into the alert output.
 
-The current fixture contains:
+### Canonical validation fixture
+
+The initial validation fixture contains:
 
 - 10 cost records
 - 5 products
 - 3 expiration records
+
+The expected weighted-average costs are:
+
+| Product | Average cost |
+|---|---|
+| 000000001 | 183.58 |
+| 000000002 | 115.00 |
+| 000000003 | 93.20 |
+| 000000004 | 50.00 |
+| 000000005 | 325.00 |
 
 ## Architecture
 
@@ -109,7 +125,7 @@ The current fixture contains:
 
 ## Modern implementation
 
-The modern implementation is divided into small components:
+The modern implementation is divided into focused components:
 
 | Component | Responsibility |
 |---|---|
@@ -121,14 +137,14 @@ The modern implementation is divided into small components:
 
 ## IBM Bob
 
-IBM Bob was used as an AI modernization agent during the project.
+IBM Bob was used as the AI modernization agent throughout the project.
 
-Bob was first used to analyze the COBOL program before modifying the repository.
+Bob was first used to analyze the legacy COBOL program before implementing the modern equivalent.
 
 The analysis focused on:
 
 - Business rules
-- Input/output files
+- Input/output contracts
 - Control-break logic
 - Weighted-average calculation
 - Decimal representation
@@ -138,9 +154,15 @@ The analysis focused on:
 - Observable behavior
 - Modernization strategy
 
-Bob identified, among other things, the classic COBOL control-break pattern and the `DECIMAL-POINT IS COMMA` configuration used by the legacy program.
+Bob identified, among other things, the COBOL control-break pattern and the:
 
-The Bob analysis and modernization planning are documented in:
+```
+DECIMAL-POINT IS COMMA
+```
+
+configuration used by the legacy program.
+
+The analysis and modernization planning are documented in:
 
 ```
 docs/evidence/
@@ -148,13 +170,21 @@ docs/evidence/
 └── 04-bob-modernization-plan.md
 ```
 
-Task session evidence is stored in:
+Bob was also used to:
+
+- Analyze the legacy implementation.
+- Design the modernization plan.
+- Harden the modernization and its equivalence tests.
+- Design a deterministic large-scale validation dataset.
+- Verify the complete implementation.
+
+Task-session evidence and exported Bob task histories are stored in:
 
 `bob_sessions/`
 
 ## A real legacy bug discovered during validation
 
-During the initial validation, the COBOL program contained a bug in the historical-output routine.
+During the initial equivalence validation, a real defect was discovered in the COBOL historical-output routine.
 
 The calculated average cost was moved into a working variable that was also used for the current input cost:
 
@@ -171,14 +201,14 @@ The fix introduced dedicated temporary fields for historical output:
 05 WS-HR-GANANCIA-TEMP  PIC 9(3)V99.
 ```
 
-After the fix, the COBOL baseline produced the expected results and the modern implementation could be validated against it.
+After the fix, the COBOL baseline produced the expected results and could be used as the behavioral reference for the modernization.
 
-The complete investigation is documented in:
+The investigation is documented in:
 
 ```
-docs/
+docs/evidence/
 ├── 02-legacy-modern-equivalence.md
-└── 03-equivalence-validation.md
+└── 01-decimal-format.md
 ```
 
 ## Legacy compatibility details
@@ -217,7 +247,7 @@ LegacyLens does not only compare calculated numbers.
 
 The modern batch also reproduces the observable output format of the COBOL program.
 
-For `historico.dat`, the current COBOL output contains records with:
+For `historico.dat`, the COBOL output contains records with:
 
 ```
 9 bytes   product ID
@@ -232,11 +262,46 @@ The modern writer reproduces this format and the tests compare the generated fil
 
 This allows the validation to detect differences that would not be visible from numerical comparisons alone.
 
+## Large-scale validation
+
+In addition to the canonical 10-record fixture, LegacyLens includes a deterministic large-scale validation dataset.
+
+The dataset contains:
+
+- 500 products
+- 54,088 cost records
+- 250 expiration records
+- Fixed-width COBOL-compatible input
+- Products sorted according to the legacy control-break requirements
+- Deterministic generation using seed 42
+- SHA-256 hashes recorded in the dataset manifest
+
+The generated input files and compiled COBOL binary are intentionally not committed to the repository. They can be reproduced locally using:
+
+```
+python tests/fixtures/large/generate.py
+```
+
+The large-scale validation verifies:
+
+- Record format compatibility
+- Product counts
+- Alert counts
+- Weighted-average calculations
+- Output record format
+- Deterministic dataset generation
+- COBOL/Python output equivalence
+- Byte-for-byte equality of generated output files
+
+More details:
+
+`docs/04-large-dataset.md`
+
 ## Validation
 
-The modern implementation is validated against the actual COBOL output.
+LegacyLens validates the modern implementation against the actual COBOL behavior.
 
-Current equivalence result:
+### Canonical equivalence
 
 ```
 ✓ LEGACY ↔ MODERN EQUIVALENCE PASSED
@@ -251,24 +316,34 @@ Products compared: 5
 000000005: COBOL cost=325.00 MODERN cost=325.00
 ```
 
-The full test suite currently reports:
+### Full automated suite
 
 ```
-19 passed
+59 passed
 ```
 
-The tests cover:
+The test suite covers:
 
 - Legacy cost equivalence
+- Weighted-average calculations
 - Profit/gain equivalence
-- Expiration parsing
-- Alert record ordering
+- Expiration processing
+- Alert ordering
 - Alert counts
 - Output overwrite behavior
+- Historical output format
 - `historico.dat` byte-for-byte equivalence
 - `alertas.dat` byte-for-byte equivalence
 - Complete batch execution
-- Output record format
+- Large-scale validation
+- Deterministic dataset generation
+
+For the large-scale workload, both implementations produce:
+
+- 500 cost records
+- 250 alert records
+
+and the generated `historico.dat` and `alertas.dat` outputs are compared byte-for-byte.
 
 ## Running the project
 
@@ -280,12 +355,12 @@ The tests cover:
 
 A virtual environment is recommended.
 
-### Run the legacy/modern equivalence test
+### Run the canonical equivalence test
 
 From the repository root:
 
 ```
-.venv/bin/python -m tests.test_equivalence
+PYTHONPATH=. .venv/bin/python tests/test_equivalence.py
 ```
 
 Expected result:
@@ -297,27 +372,51 @@ Expected result:
 ### Run the complete test suite
 
 ```
-.venv/bin/python -m pytest tests/
+.venv/bin/python -m pytest tests/ -v
 ```
 
 Expected result:
 
 ```
-19 passed
+59 passed
 ```
+
+### Generate the large validation dataset
+
+```
+python tests/fixtures/large/generate.py
+```
+
+### Compile the COBOL program for large-scale validation
+
+```
+cobc -x -o tests/fixtures/large/batchcosto \
+  legacy/cobol/batchcosto.cob
+```
+
+### Run large-scale equivalence
+
+```
+.venv/bin/python -m pytest tests/test_large_equivalence.py -v
+```
+
+On the macOS GnuCOBOL environment used for this prototype, the large-scale COBOL equivalence test runs with:
+
+```
+COB_LS_VALIDATE=0
+```
+
+This disables GnuCOBOL's line-sequential NUL-byte validation so that the historical COBOL output can be compared byte-for-byte with the legacy-compatible Python output.
 
 ## Project structure
 
 ```
 legacy/
 └── cobol/
-    ├── batchcosto.cob
-    ├── costos.dat
-    ├── vencimientos.dat
-    ├── historico.dat
-    └── alertas.dat
+    └── batchcosto.cob
 
 modern/
+├── __init__.py
 ├── legacy_parser.py
 ├── cost_calculator.py
 ├── historic_parser.py
@@ -326,7 +425,12 @@ modern/
 
 tests/
 ├── test_equivalence.py
-└── test_alert_equivalence.py
+├── test_alert_equivalence.py
+├── test_large_equivalence.py
+└── fixtures/
+    └── large/
+        ├── generate.py
+        └── manifest.json
 
 docs/
 ├── evidence/
@@ -334,14 +438,14 @@ docs/
 │   ├── 02-legacy-modern-equivalence.md
 │   ├── 03-bob-legacy-analysis.md
 │   └── 04-bob-modernization-plan.md
-│
-├── 01-project-overview.md
-├── 02-legacy-baseline.md
-└── 03-equivalence-validation.md
+└── 04-large-dataset.md
 
 bob_sessions/
-└── task-04-batch-modernization-summary.png
+├── Task session screenshots
+└── Exported task histories
 ```
+
+Generated `.dat` files, compiled binaries, Python cache files, and other local artifacts are excluded from version control.
 
 ## Modernization principle
 
@@ -351,25 +455,38 @@ LegacyLens follows one central principle:
 
 The goal is not to make the modern implementation look like the COBOL implementation.
 
-The goal is to understand what the legacy system actually does, reproduce that behavior, and then use automated validation to demonstrate that the modernization did not silently change it.
+The goal is to:
 
-## Status
+1. Understand what the legacy system actually does.
+2. Extract the business and compatibility rules.
+3. Implement the modern equivalent.
+4. Execute both implementations against equivalent inputs.
+5. Compare their observable outputs.
+6. Use automated validation to demonstrate that the modernization did not silently change behavior.
 
-**Current MVP: working**
+## Current status
 
-The current prototype demonstrates:
+**Working prototype**
+
+The current implementation demonstrates:
 
 - COBOL behavior analysis
 - Legacy business-rule extraction
 - Python modernization
-- Cost calculation equivalence
+- Weighted-average cost equivalence
 - Expiration-alert equivalence
 - Byte-for-byte output validation
-- Automated regression tests
+- Large-scale deterministic validation
+- Automated regression testing
 - IBM Bob-assisted modernization workflow
+- Task-session evidence for IBM Bob usage
 
 ## Hackathon
 
 Built for the IBM Bob 2.0 Hackathon.
 
-The project uses IBM Bob as part of the legacy analysis and modernization workflow, with task-session evidence maintained in `bob_sessions/`.
+LegacyLens uses IBM Bob as a core part of the legacy analysis, modernization planning, implementation, validation, and verification workflow.
+
+The repository includes task-session evidence and exported task histories in:
+
+`bob_sessions/`
