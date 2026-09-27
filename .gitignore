@@ -18,3 +18,10 @@ legacy/cobol/alertas.dat
 # Generated legacy output
 historico.dat
 alertas.dat
+
+# Large load-test fixtures (generated — never committed)
+tests/fixtures/large/costos.dat
+tests/fixtures/large/vencimientos.dat
+tests/fixtures/large/batchcosto
+__pycache__/
+*.py[cod]
